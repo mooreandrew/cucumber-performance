@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+
+    <title>Performance Test</title>
+
+<!--[if lt IE 9]><script language="javascript" type="text/javascript" src="excanvas.js"></script><![endif]-->
+<script language="javascript" type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script language="javascript" type="text/javascript" src="http://cdnjs.cloudflare.com/ajax/libs/jqPlot/1.0.8/jquery.jqplot.min.js"></script>
+<link rel="stylesheet" type="text/css" href="http://cdnjs.cloudflare.com/ajax/libs/jqPlot/1.0.8/jquery.jqplot.min.css" />
+<link rel="stylesheet" type="text/css" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+</head>
+<body>
+<div id="chartdiv" style="height:400px;width:800px; "></div>
+
+</body>
+
+<script class="code" type="text/javascript">
+<%= @logfile %>
+
+
+seriesColorsMaster = [ "#4bb2c5", "#c5b47f", "#EAA228", "#579575", "#839557", "#958c12",
+        "#953579", "#4b5de4", "#d8b83f", "#ff5800", "#0085cc"]
+
+graph_ymax = 0
+graph_y2max = 0
+graph_xmax = 0
+
+
+
+
+
+
+
+
+</script>
+
+<br>
+<b>Information:</b>
+<div class="bs-example">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Colour</th>
+          <th>Name</th>
+          <th>Min</th>
+          <th>Avg</th>
+          <th>Max</th>
+        </tr>
+      </thead>
+      <tbody class="tablebody">
+        <tr>
+          <td id="row1"></td>
+          <td>Vusers</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+<br>
+<b>Errors:</b>
+<div class="bs-example">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Script</th>
+          <th>Instance</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody class="errors">
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+<script class="code" type="text/javascript">
+
+
+
+
+function renderGraph() {
+    if (typeof plot1 !== 'undefined') {
+        plot1.destroy();
+    }
+      plot1 = $.jqplot('chartdiv',  [graph_data1, graph_data2, graph_data3, graph_data4, graph_data5, graph_data6, graph_data7, graph_data8, graph_data9, graph_data10],
+      { title:'Performance Test',
+      seriesColors: seriesColorsMaster,
+        axes:{yaxis:{label: 'VUsers', min:0, max:graph_ymax},
+          y2axis: {label: 'Response', min:0, max:graph_y2max},
+        xaxis:{min:0, max:graph_xmax, numberTicks: 10}
+        },
+        series: [
+         { yaxis: "yaxis" },
+         { yaxis: "y2axis" }
+        ]
+
+
+      });
+
+}
+
+
+function get_graph_data() {
+
+
+$.getJSON( "/data", function( json ) {
+
+  graph_ymax = json.graph_ymax;
+  graph_y2max = json.graph_y2max;
+  graph_xmax = json.graph_xmax;
+
+  graph_data1 = [];
+  graph_data2 = [];
+  graph_data3 = [];
+  graph_data4 = [];
+  graph_data5 = [];
+  graph_data6 = [];
+  graph_data7 = [];
+  graph_data8 = [];
+  graph_data9 = [];
+  graph_data10 = [];
+
+  graph_data1 = json.graph_data[0];
+  graph_data2 = json.graph_data[1];
+  graph_data3 = json.graph_data[2];
+  graph_data4 = json.graph_data[3];
+  graph_data5 = json.graph_data[4];
+  graph_data6 = json.graph_data[5];
+  graph_data7 = json.graph_data[6];
+  graph_data8 = json.graph_data[7];
+  graph_data9 = json.graph_data[8];
+  graph_data10 = json.graph_data[9];
+
+
+  graph_details_name = [];
+  graph_details_min = [];
+  graph_details_max = [];
+  graph_details_avg = [];
+
+  graph_details_name = json.graph_details_name;
+  graph_details_min = json.graph_details_min;
+  graph_details_max = json.graph_details_max;
+  graph_details_avg = json.graph_details_avg;
+
+  renderGraph()
+
+  $( ".tablebody" ).html('')
+
+  for (var i = 0; i < graph_details_name.length; i++) {
+      //alert(graph_details[i]);
+      //Do something
+
+      $( ".tablebody" ).append( '<tr><td id="row' + (i + 1) + '"></td><td>' + graph_details_name[i] + '</td><td>' + graph_details_min[i] + '</td><td>' + graph_details_avg[i] + '</td><td>' + graph_details_max[i] + '</td></tr>');
+  }
+
+  $('#row1').css('background',seriesColorsMaster[0]);
+  $('#row2').css('background',seriesColorsMaster[1]);
+  $('#row3').css('background',seriesColorsMaster[2]);
+  $('#row4').css('background',seriesColorsMaster[3]);
+  $('#row5').css('background',seriesColorsMaster[4]);
+  $('#row6').css('background',seriesColorsMaster[5]);
+  $('#row7').css('background',seriesColorsMaster[6]);
+  $('#row8').css('background',seriesColorsMaster[7]);
+  $('#row9').css('background',seriesColorsMaster[8]);
+  $('#row10').css('background',seriesColorsMaster[9]);
+
+
+  for (var i2 = 0; i2 < json.error_log.length; i2++) {
+      //alert(graph_details[i]);
+      //Do something
+
+      $( ".errors" ).append( '<tr><td>' + json.error_log[i2].error_script + '</td><td>' + json.error_log[i2].error_iteration + '</td><td>' + json.error_log[i2].error_message + '</td></tr>');
+  }
+
+
+
+});
+
+}
+
+get_graph_data();
+
+window.setInterval(function(){
+
+    get_graph_data();
+
+
+}, 2000);
+
+
+
+
+</script>
+
+</div>
+</html>
