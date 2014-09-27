@@ -35,37 +35,31 @@ Given(/^I want to run a performance$/) do
 
   # Start the graph x axes
   $max_x = 3
+  $trans_max_x = 3
+
+  # The running scenarios
+  $running_scenarios_hash = {}
+
+  # The amount of V users
+  $amount_of_users = 0
+
+  # Running v user scenario
+  $vuser_scenarios = []
+
+  # How many errors per a scenario
+  $scenario_errors = {}
+
+  $scenario_iterations = {}
+
+  $transactions_iterations= {}
 
   # Start a controller, this is a GUI to allow you to monitor the test.
   # This uses sinatra and is accessable by: http://localhost:4567
   controller_thread = Thread.new{controller}
 
-  # Runs Cucumber to get a list of tests. This will be reworked in the future
-  args = []
-  args << '--dry-run'
-  args << '--format'
-  args << 'json'
-
   @in = StringIO.new
   @out = StringIO.new
   @err = StringIO.new
-
-  begin
-    cuke = Cucumber::Cli::Main.new(args, @in, @out, @err).execute!
-  rescue Exception=>e
-    # Do nothing!
-  end
-
-  $features_hash = {}
-
-  $scenario_steps = {}
-
-  JSON.parse(@out.string).each do |features|
-    features['elements'].each do |scenarios|
-      $features_hash[scenarios['name'].to_s] = features['uri'].to_s + ':' + scenarios['line'].to_s
-      $scenario_steps[features['uri'].to_s + ':' + scenarios['line'].to_s] = []
-    end
-  end
 
 end
 
@@ -73,31 +67,29 @@ Given(/^I have the following scenarios$/) do |table|
 
   # This will use the cucumber call above to work out if the scenario you've enter
   # is valid and can be run.
-  $running_scenarios_hash = {}
-
-  $running_scenarios_hash_name = {}
-
-  $amount_of_users = 0
-
-  $vuser_scenarios = []
 
   table.raw.each do |value|
-    if (!$features_hash[value[0]].nil?)
-      $amount_of_users = $amount_of_users + value[1].to_i
-      $running_scenarios_hash[$features_hash[value[0]]] = value[1].to_i
-      $running_scenarios_hash_name[$features_hash[value[0]]] = value[0]
 
+    if value[0] != 'SCENARIO' then
       for i in 0..value[1].to_i - 1
-        $vuser_scenarios << $features_hash[value[0]]
+        $vuser_scenarios << value[0]
       end
+
+      $scenario_errors[value[0]] = 0
+      $scenario_iterations[value[0]] = 0
+
+      $results_scenarios_graph[value[0]] = []
+
+      $amount_of_users = $amount_of_users + value[1].to_i
+      $running_scenarios_hash[value[0]] = value[1].to_i
 
       begin
         load File.expand_path('performanceTests/' +  value[0].gsub('(','').gsub(')', '').gsub(/ /, '_').capitalize.downcase + '.rb')
       rescue Exception=>e
-        raise "Unable to load: " + File.expand_path('performanceTests/' +  value[0].gsub('(','').gsub(')', '').gsub(/ /, '_').capitalize.downcase + '.rb').to_s + '.rb'
+        raise "Unable to load: " + File.expand_path('performanceTests/' +  value[0].gsub('(','').gsub(')', '').gsub(/ /, '_').capitalize.downcase + '.rb')
       end
-
     end
+
   end
 
   $vuser_scenarios.shuffle
@@ -202,6 +194,7 @@ When(/^I run the performance test$/) do
   # Once the performance test has finished the sinatra app stops,
   # this gets around that by visiting the page and producing a pdf output
   visit('http://localhost:4567')
+  sleep(1)
   save_screenshot("performance-#{Time.new.to_i}.pdf")
 
 end
@@ -216,7 +209,7 @@ Then(/^the scenarios response times were below:$/) do |table|
   table.raw.each do |value|
     if (value[0] != 'SCENARIO')
       # We need to get the average of the scenarios and then devide that by 1000 because they are in miliseconds
-      response_time = ($results_scenarios[$features_hash[value[0]]].inject{ |sum, el| sum + el }.to_f / $results_scenarios[$features_hash[value[0]]].size) / 1000
+      response_time = ($results_scenarios[value[0]].inject{ |sum, el| sum + el }.to_f / $results_scenarios[value[0]].size) / 1000
       # Assert to see if the response time is below the threshold
       assert_operator response_time, :<, value[1].to_i, 'The average response time wasn\'t below the threshold (' + value[0] + ')'
     end

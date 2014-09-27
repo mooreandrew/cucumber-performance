@@ -17,22 +17,21 @@
 </body>
 
 <script class="code" type="text/javascript">
-<%= @logfile %>
-
 
 seriesColorsMaster = [ "#4bb2c5", "#c5b47f", "#EAA228", "#579575", "#839557", "#958c12",
-        "#953579", "#4b5de4", "#d8b83f", "#ff5800", "#0085cc"]
+        "#953579", "#4b5de4", "#d8b83f", "#ff5800", "#0085cc",
+        "#00b2c5", "#00b47f", "#00A228", "#009575", "#009557", "#008c12",
+                "#003579", "#005de4", "#00b83f", "#005800", "000000",
+                "#4b00c5", "#c5007f", "#EA0028", "#570075", "#830057", "#950012",
+                        "#950079", "#4b00e4", "#d8003f", "#ff0000", "#0000cc"
+        ]
 
 graph_ymax = 0
 graph_y2max = 0
 graph_xmax = 0
 
-
-
-
-
-
-
+graph_trans_ymax = 0
+graph_trans_ymax = 0
 
 </script>
 
@@ -44,9 +43,12 @@ graph_xmax = 0
         <tr>
           <th>Colour</th>
           <th>Name</th>
-          <th>Min</th>
-          <th>Avg</th>
-          <th>Max</th>
+          <th>Iterations</th>
+          <th>Errors</th>
+          <th>Min Time</th>
+          <th>Avg Time</th>
+          <th>Max Time</th>
+          <th>90th Per</th>
         </tr>
       </thead>
       <tbody class="tablebody">
@@ -56,12 +58,39 @@ graph_xmax = 0
           <td></td>
           <td></td>
           <td></td>
+          <td></td>
+          <td></td>
         </tr>
       </tbody>
     </table>
   </div>
 
 <br>
+<div id="chartdiv_trans" style="height:400px;width:800px; "></div>
+
+</body>
+<br>
+<b>Information:</b>
+<div class="bs-example">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Colour</th>
+          <th>Name</th>
+          <th>Iterations</th>
+          <th>Min Time</th>
+          <th>Avg Time</th>
+          <th>Max Time</th>
+          <th>90th Per</th>
+        </tr>
+      </thead>
+      <tbody class="tablebody_trans">
+      </tbody>
+    </table>
+  </div>
+
+<br>
+
 <b>Errors:</b>
 <div class="bs-example">
     <table class="table">
@@ -92,7 +121,7 @@ function renderGraph() {
         plot1.destroy();
     }
       plot1 = $.jqplot('chartdiv',  [graph_data1, graph_data2, graph_data3, graph_data4, graph_data5, graph_data6, graph_data7, graph_data8, graph_data9, graph_data10],
-      { title:'Performance Test',
+      { title:'Performance Test (Scenarios)',
       seriesColors: seriesColorsMaster,
         axes:{yaxis:{label: 'VUsers', min:0, max:graph_ymax},
           y2axis: {label: 'Response', min:0, max:graph_y2max},
@@ -108,6 +137,26 @@ function renderGraph() {
 
 }
 
+function trans_renderGraph() {
+    if (typeof plot2 !== 'undefined') {
+        plot2.destroy();
+    }
+      plot2 = $.jqplot('chartdiv_trans',  [graph_trans_data1, graph_trans_data2, graph_trans_data3, graph_trans_data4, graph_trans_data5, graph_trans_data6, graph_trans_data7, graph_trans_data8, graph_trans_data9, graph_trans_data10,
+      graph_trans_data11, graph_trans_data12, graph_trans_data13, graph_trans_data14, graph_trans_data15, graph_trans_data16, graph_trans_data17, graph_trans_data18, graph_trans_data19, graph_trans_data20,
+      graph_trans_data21, graph_trans_data22, graph_trans_data23, graph_trans_data24, graph_trans_data25, graph_trans_data26, graph_trans_data27, graph_trans_data28, graph_trans_data29, graph_trans_data30],
+      { title:'Performance Test (Transactions)',
+      seriesColors: seriesColorsMaster,
+        axes:{yaxis:{label: 'Response', min:0, max:graph_trans_ymax},
+        xaxis:{min:0, max:graph_trans_xmax, numberTicks: 10}
+        },
+        series: [
+         { yaxis: "yaxis" },
+        ]
+
+
+      });
+
+}
 
 function get_graph_data() {
 
@@ -140,7 +189,6 @@ $.getJSON( "/data", function( json ) {
   graph_data9 = json.graph_data[8];
   graph_data10 = json.graph_data[9];
 
-
   graph_details_name = [];
   graph_details_min = [];
   graph_details_max = [];
@@ -150,8 +198,9 @@ $.getJSON( "/data", function( json ) {
   graph_details_min = json.graph_details_min;
   graph_details_max = json.graph_details_max;
   graph_details_avg = json.graph_details_avg;
-
-  renderGraph()
+  graph_details_err = json.graph_details_err;
+  graph_details_ite = json.graph_details_ite;
+  graph_details_per = json.graph_details_per;
 
   $( ".tablebody" ).html('')
 
@@ -159,7 +208,7 @@ $.getJSON( "/data", function( json ) {
       //alert(graph_details[i]);
       //Do something
 
-      $( ".tablebody" ).append( '<tr><td id="row' + (i + 1) + '"></td><td>' + graph_details_name[i] + '</td><td>' + graph_details_min[i] + '</td><td>' + graph_details_avg[i] + '</td><td>' + graph_details_max[i] + '</td></tr>');
+      $( ".tablebody" ).append( '<tr><td id="row' + (i + 1) + '"></td><td>' + graph_details_name[i] + '</td><td>' + graph_details_ite[i] + '</td><td>' + graph_details_err[i] + '</td><td>' + graph_details_min[i] + '</td><td>' + graph_details_avg[i] + '</td><td>' + graph_details_max[i] + '</td><td>' + graph_details_per[i] + '</td></tr>');
   }
 
   $('#row1').css('background',seriesColorsMaster[0]);
@@ -173,6 +222,124 @@ $.getJSON( "/data", function( json ) {
   $('#row9').css('background',seriesColorsMaster[8]);
   $('#row10').css('background',seriesColorsMaster[9]);
 
+
+  renderGraph()
+
+  graph_trans_data1 = [];
+  graph_trans_data2 = [];
+  graph_trans_data3 = [];
+  graph_trans_data4 = [];
+  graph_trans_data5 = [];
+  graph_trans_data6 = [];
+  graph_trans_data7 = [];
+  graph_trans_data8 = [];
+  graph_trans_data9 = [];
+  graph_trans_data10 = [];
+  graph_trans_data11 = [];
+  graph_trans_data12 = [];
+  graph_trans_data13 = [];
+  graph_trans_data14 = [];
+  graph_trans_data15 = [];
+  graph_trans_data16 = [];
+  graph_trans_data17 = [];
+  graph_trans_data18 = [];
+  graph_trans_data19 = [];
+  graph_trans_data20 = [];
+  graph_trans_data21 = [];
+  graph_trans_data22 = [];
+  graph_trans_data23 = [];
+  graph_trans_data24 = [];
+  graph_trans_data25 = [];
+  graph_trans_data26 = [];
+  graph_trans_data27 = [];
+  graph_trans_data28 = [];
+  graph_trans_data29 = [];
+  graph_trans_data30 = [];
+
+  graph_trans_data1 = json.trans_graph_data[0];
+  graph_trans_data2 = json.trans_graph_data[1];
+  graph_trans_data3 = json.trans_graph_data[2];
+  graph_trans_data4 = json.trans_graph_data[3];
+  graph_trans_data5 = json.trans_graph_data[4];
+  graph_trans_data6 = json.trans_graph_data[5];
+  graph_trans_data7 = json.trans_graph_data[6];
+  graph_trans_data8 = json.trans_graph_data[7];
+  graph_trans_data9 = json.trans_graph_data[8];
+  graph_trans_data10 = json.trans_graph_data[9];
+  graph_trans_data11 = json.trans_graph_data[10];
+  graph_trans_data12 = json.trans_graph_data[11];
+  graph_trans_data13 = json.trans_graph_data[12];
+  graph_trans_data14 = json.trans_graph_data[13];
+  graph_trans_data15 = json.trans_graph_data[14];
+  graph_trans_data16 = json.trans_graph_data[15];
+  graph_trans_data17 = json.trans_graph_data[16];
+  graph_trans_data18 = json.trans_graph_data[17];
+  graph_trans_data19 = json.trans_graph_data[18];
+  graph_trans_data20 = json.trans_graph_data[19];
+  graph_trans_data21 = json.trans_graph_data[20];
+  graph_trans_data22 = json.trans_graph_data[21];
+  graph_trans_data23 = json.trans_graph_data[22];
+  graph_trans_data24 = json.trans_graph_data[23];
+  graph_trans_data25 = json.trans_graph_data[24];
+  graph_trans_data26 = json.trans_graph_data[25];
+  graph_trans_data27 = json.trans_graph_data[26];
+  graph_trans_data28 = json.trans_graph_data[27];
+  graph_trans_data29 = json.trans_graph_data[28];
+  graph_trans_data30 = json.trans_graph_data[29];
+
+  graph_trans_ymax = json.trans_graph_ymax;
+  graph_trans_xmax = json.trans_graph_xmax;
+
+  trans_renderGraph()
+
+  trans_graph_details_name = json.trans_graph_details_name;
+  trans_graph_details_min = json.trans_graph_details_min;
+  trans_graph_details_max = json.trans_graph_details_max;
+  trans_graph_details_avg = json.trans_graph_details_avg;
+  trans_graph_details_ite = json.trans_graph_details_ite;
+  trans_graph_details_per = json.trans_graph_details_per;
+
+  $( ".tablebody_trans" ).html('')
+
+  for (var i = 0; i < trans_graph_details_name.length; i++) {
+
+      $( ".tablebody_trans" ).append( '<tr><td id="row_trans' + (i + 1) + '"></td><td>' + trans_graph_details_name[i] + '</td><td>' + trans_graph_details_ite[i] + '</td><td>' + trans_graph_details_min[i] + '</td><td>' + trans_graph_details_avg[i] + '</td><td>' + trans_graph_details_max[i] + '</td><td>' + trans_graph_details_per[i] + '</td></tr>');
+  }
+
+  $('#row_trans1').css('background',seriesColorsMaster[0]);
+  $('#row_trans2').css('background',seriesColorsMaster[1]);
+  $('#row_trans3').css('background',seriesColorsMaster[2]);
+  $('#row_trans4').css('background',seriesColorsMaster[3]);
+  $('#row_trans5').css('background',seriesColorsMaster[4]);
+  $('#row_trans6').css('background',seriesColorsMaster[5]);
+  $('#row_trans7').css('background',seriesColorsMaster[6]);
+  $('#row_trans8').css('background',seriesColorsMaster[7]);
+  $('#row_trans9').css('background',seriesColorsMaster[8]);
+  $('#row_trans10').css('background',seriesColorsMaster[9]);
+  $('#row_trans11').css('background',seriesColorsMaster[10]);
+  $('#row_trans12').css('background',seriesColorsMaster[11]);
+  $('#row_trans13').css('background',seriesColorsMaster[12]);
+  $('#row_trans14').css('background',seriesColorsMaster[13]);
+  $('#row_trans15').css('background',seriesColorsMaster[14]);
+  $('#row_trans16').css('background',seriesColorsMaster[15]);
+  $('#row_trans17').css('background',seriesColorsMaster[16]);
+  $('#row_trans18').css('background',seriesColorsMaster[17]);
+  $('#row_trans19').css('background',seriesColorsMaster[18]);
+  $('#row_trans20').css('background',seriesColorsMaster[19]);
+  $('#row_trans21').css('background',seriesColorsMaster[20]);
+  $('#row_trans22').css('background',seriesColorsMaster[21]);
+  $('#row_trans23').css('background',seriesColorsMaster[22]);
+  $('#row_trans24').css('background',seriesColorsMaster[23]);
+  $('#row_trans25').css('background',seriesColorsMaster[24]);
+  $('#row_trans26').css('background',seriesColorsMaster[25]);
+  $('#row_trans27').css('background',seriesColorsMaster[26]);
+  $('#row_trans28').css('background',seriesColorsMaster[27]);
+  $('#row_trans29').css('background',seriesColorsMaster[28]);
+  $('#row_trans30').css('background',seriesColorsMaster[29]);
+
+
+
+  $( ".errors" ).html('')
 
   for (var i2 = 0; i2 < json.error_log.length; i2++) {
       //alert(graph_details[i]);

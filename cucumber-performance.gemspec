@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name        = 'cucumber-performance'
-  s.version     = '0.0.2'
-  s.date        = '2014-09-25'
+  s.version     = '0.0.3'
+  s.date        = '2014-09-27'
   s.summary     = ""
   s.description = "This gem adds function libraries for performance testing and the steps to support the run"
   s.authors     = ["Andrew Moore"]

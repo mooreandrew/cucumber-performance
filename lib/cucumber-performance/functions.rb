@@ -22,7 +22,7 @@ def loadtest()
   $vuser_inc = $vuser_inc + 1
 
     # convervate the cucumber scenario name, into the class name
-    scenario_name = $running_scenarios_hash_name[cucumber_scenario].gsub('(','').gsub(')', '').gsub(/ /, '_').capitalize
+    scenario_name = cucumber_scenario.gsub('(','').gsub(')', '').gsub(/ /, '_').capitalize
 
     # create an instance of the class from the (step_defitions/performance) file
     script = Module.const_get(scenario_name).new
@@ -45,49 +45,58 @@ def loadtest()
         # Call the threads action step
         script.v_action()
 
+        # As the test has finished, work out the duration
+        script_duration = (Time.now - scriptstart_time) * 1000
+
+        # If the duration is above the x axis current value, let's increase it
+        if ((script_duration / 1000) > $max_x) then
+          $max_x = (script_duration / 1000).ceil + 1
+        end
+
+        # If the current cucumber scenario have no results, lets define their arrays
+        if ($results_scenarios[cucumber_scenario].nil?) then
+          $results_scenarios[cucumber_scenario] = []
+          $results_scenarios_graph[cucumber_scenario] = {}
+        end
+
+        # Add the duration of the test to an array so we can work our max/min/avg etc...
+        $results_scenarios[cucumber_scenario] << script_duration
+
+        # For each second we need to build up an average, so need to build up another array
+        # based on the current time
+        current_time_id = $duration - (($starttime + $duration) - Time.new.to_i) + 1
+
+        # If the array doesn't exist for the current time, then lets define it
+        if($results_scenarios_graph[cucumber_scenario][current_time_id].nil? == true) then
+          $results_scenarios_graph[cucumber_scenario][current_time_id] = Array.new()
+        end
+
+        # Add the value to the array
+        $results_scenarios_graph[cucumber_scenario][current_time_id].push(script_duration)
+
       rescue Exception=>e
         # If it fails, keep a log of why, then carry on
 
         error = {}
-        error['error_message'] = e
+        error['error_message'] = e.to_s + '<br>' + e.backtrace.to_s
         error['error_iteration'] = iteration
         error['error_script'] = cucumber_scenario
 
+      #  $stdout.puts 'Error: ' + e + "\n" +  backtrace.map {|l| "  #{l}\n"}.join
+
+
+        $scenario_errors[cucumber_scenario] += 1
+
+        #$stdout.puts $scenario_errors
 
         $error_log << error
 
-        $total_failures = $total_failures + 1
-          $stdout.puts  e
+        $total_failures += 1
+      #  $stdout.puts 'Error: ' + e + "\n" +  backtrace.map {|l| "  #{l}\n"}.join
       end
 
-      # As the test has finished, work out the duration
-      script_duration = (Time.now - scriptstart_time) * 1000
+      $scenario_iterations[cucumber_scenario] += 1
 
-      # If the duration is above the x axis current value, let's increase it
-      if ((script_duration / 1000) > $max_x) then
-        $max_x = (script_duration / 1000).ceil + 1
-      end
-
-      # If the current cucumber scenario have no results, lets define their arrays
-      if ($results_scenarios[cucumber_scenario].nil?) then
-        $results_scenarios[cucumber_scenario] = []
-        $results_scenarios_graph[cucumber_scenario] = {}
-      end
-
-      # Add the duration of the test to an array so we can work our max/min/avg etc...
-      $results_scenarios[cucumber_scenario] << script_duration
-
-      # For each second we need to build up an average, so need to build up another array
-      # based on the current time
-      current_time_id = $duration - (($starttime + $duration) - Time.new.to_i) + 1
-
-      # If the array doesn't exist for the current time, then lets define it
-      if($results_scenarios_graph[cucumber_scenario][current_time_id].nil? == true) then
-        $results_scenarios_graph[cucumber_scenario][current_time_id] = Array.new()
-      end
-
-      # Add the value to the array
-      $results_scenarios_graph[cucumber_scenario][current_time_id].push(script_duration)
 
       # Sleep a second between each scenario. This will need to be parametised soon
       sleep(1)
@@ -122,6 +131,12 @@ end
 #####
 def end_traction(step_name, start_time)
 
+  if ($transactions_iterations[step_name].nil?) then
+    $transactions_iterations[step_name] = 0
+  end
+
+  $transactions_iterations[step_name] += 1
+
   # This uses the value from start_traction() and finds how long the test took.
   transaction_duration = (Time.now - start_time) * 1000
 
@@ -155,8 +170,6 @@ end
 ## Description: Performs a http get command for the user specified
 #####
 def http_get(curl, data, url)
-
-  #puts 'GET: ' + url
 
   # Define the url we want to hit
   curl.url=url
@@ -266,69 +279,216 @@ def controller()
     # Sets the graph data for [0] (vusers) to 0, stops an error
     data['graph_data'][0][0] = 0
 
-    # Loops through each second to get the graph data
-    for i in 0..((Time.new.to_i - $starttime ))
+    if (!$starttime.nil?) then
 
-      # The [0] is for v users
-      data['graph_data'][0][i] = $results_vusers[i + 1]
+      # Loops through each second to get the graph data
+      for i in 0..((Time.new.to_i - $starttime ))
 
-      num = 0
-      # Anthing above [0] is for the running tests
-      $results_scenarios_graph.each do |key, results2|
-        num = num + 1
-        if (results2[i + 1].nil? == false) then
+        # The [0] is for v users
+        data['graph_data'][0][i] = $results_vusers[i + 1]
 
-          sum = 0
-          results2[i + 1].each { |a| sum+=a }
+        num = 0
+        # Anthing above [0] is for the running tests
+        $results_scenarios_graph.each do |key, results2|
+          num = num + 1
+          if (results2[i + 1].nil? == false) then
 
-          # Add the results to the json object
-          data['graph_data'][num][i] = ((sum / results2[i + 1].size.to_f) / 1000).round(2)
-          data['graph_y2max'] = ($max_x * 1.1)
+            sum = 0
+            results2[i + 1].each { |a| sum+=a }
+
+            # Add the results to the json object
+            data['graph_data'][num][i] = ((sum / results2[i + 1].size.to_f) / 1000).round(2)
+
+            if (data['graph_data'][num][i] > $max_x) then
+              $max_x = data['graph_data'][num][i]
+            end
+
+          end
         end
       end
     end
 
-
+    data['graph_y2max'] = ($max_x * 1.1)
 
     # Define the objects for the overview of the cucumber scenarios (table below graph)
     data['graph_details_name'] = []
     data['graph_details_min'] = []
     data['graph_details_max'] = []
     data['graph_details_avg'] = []
+    data['graph_details_err'] = []
+    data['graph_details_ite'] = []
+    data['graph_details_per'] = []
 
     data['graph_details_name'][0] = 'Vusers'
 
     # If the data exists then use it, otherwise set it to 0
     if (!data['graph_data'].nil?) then
-      data['graph_details_min'][0] = data['graph_data'][0].min.round(2)
-      data['graph_details_max'][0] = data['graph_data'][0].max.round(2)
-      data['graph_details_avg'][0] =  (data['graph_data'][0].inject{ |sum, el| sum + el }.to_f / data['graph_data'][0].size).round(2)
+
+      if (data['graph_data'][0].nil?) then
+        data['graph_data'][0] = []
+      end
+
+      if (data['graph_data'][0].count > 1)
+        data['graph_details_avg'][0] =  (data['graph_data'][0].inject{ |sum, el| sum + el }.to_f / data['graph_data'][0].size).round(2)
+        data['graph_details_min'][0] = data['graph_data'][0].min.round(2)
+        data['graph_details_max'][0] = data['graph_data'][0].max.round(2)
+      else
+        data['graph_details_avg'][0] = 0
+        data['graph_details_min'][0] = 0
+        data['graph_details_max'][0] = 0
+      end
+
+      data['graph_details_err'][0] =  0
+      data['graph_details_ite'][0] =  0
+      data['graph_details_per'][0] = 0
+
     else
       data['graph_details_min'][0] = 0
       data['graph_details_max'][0] = 0
       data['graph_details_avg'][0] = 0
+      data['graph_details_err'][0] =  0
+      data['graph_details_ite'][0] =  0
+      data['graph_details_per'][0] = 0
+
     end
 
+    i = 0
+    #puts $results_scenarios_graph.count
     # This is the same as above, but for tests, not the vusers
-    for i in 0..($list_of_tests.count - 1)
+    $results_scenarios_graph.each do |key, results2|
 
-      data['graph_details_name'][i + 1] = $list_of_tests[i]
+      i += 1
+      data['graph_details_name'][i] = key
 
-      if (!$results_scenarios[$list_of_tests[i]].nil?) then
+      if (!$results_scenarios[key].nil?) then
 
-        data['graph_details_min'][i + 1] = ($results_scenarios[$list_of_tests[i]].min / 1000).round(2)
-        data['graph_details_max'][i + 1] = ($results_scenarios[$list_of_tests[i]].max / 1000).round(2)
-        data['graph_details_avg'][i + 1] = (($results_scenarios[$list_of_tests[i]].inject{ |sum, el| sum + el }.to_f / $results_scenarios[$list_of_tests[i]].size) / 1000).round(2)
-
+        if ($results_scenarios[key].count > 1)
+          data['graph_details_avg'][i] = (($results_scenarios[key].inject{ |sum, el| sum + el }.to_f / $results_scenarios[key].size) / 1000).round(2)
+          data['graph_details_min'][i] = ($results_scenarios[key].min / 1000).round(2)
+          data['graph_details_max'][i] = ($results_scenarios[key].max / 1000).round(2)
+          data['graph_details_per'][i] = (percentile($results_scenarios[key], 0.9) / 1000).round(2)
+        else
+          data['graph_details_avg'][i] = 0
+          data['graph_details_min'][i] = 0
+          data['graph_details_max'][i] = 0
+          data['graph_details_per'][i] = 0
+        end
       else
 
-        data['graph_details_min'][i + 1] = 0
-        data['graph_details_max'][i + 1] = 0
-        data['graph_details_avg'][i + 1] = 0
+        data['graph_details_min'][i] = 0
+        data['graph_details_max'][i] = 0
+        data['graph_details_avg'][i] = 0
+        data['graph_details_per'][i] = 0
 
       end
 
+      data['graph_details_err'][i] = $scenario_errors[key]
+      data['graph_details_ite'][i] = $scenario_iterations[key]
+
+
     end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # This is the array of data for each scenario for the graph
+    data['trans_graph_data'] = []
+
+    # Define the graph data objects
+    for i in 0..30
+      data['trans_graph_data'][i] = []
+    end
+
+    # Work out the xmax and ymax
+    data['trans_graph_xmax'] = (($graph_time || 0) * 1.05).ceil.to_s
+
+    # Sets the graph data for [0] (vusers) to 0, stops an error
+
+    #$stdout.puts $results_transactions_graph
+
+    if (!$starttime.nil?) then
+
+      # Loops through each second to get the graph data
+      for i in 0..((Time.new.to_i - $starttime ))
+
+        num = 0
+        # Anthing above [0] is for the running tests
+        $results_transactions_graph.each do |key, results2|
+          if (results2[i + 1].nil? == false) then
+
+            sum = 0
+            results2[i + 1].each { |a| sum+=a }
+
+            # Add the results to the json object
+            data['trans_graph_data'][num][i] = ((sum / results2[i + 1].size.to_f) / 1000).round(2)
+            if (data['trans_graph_data'][num][i] > $trans_max_x) then
+              $trans_max_x = data['trans_graph_data'][num][i]
+            end
+
+          end
+          num = num + 1
+        end
+      end
+    end
+
+    data['trans_graph_ymax'] = ($trans_max_x * 1.1)
+
+    data['trans_graph_details_name'] = []
+    data['trans_graph_details_min'] = []
+    data['trans_graph_details_max'] = []
+    data['trans_graph_details_avg'] = []
+    data['trans_graph_details_err'] = []
+    data['trans_graph_details_ite'] = []
+    data['trans_graph_details_per'] = []
+
+    i = 0
+    #puts $results_transactions_graph.count
+    # This is the same as above, but for tests, not the vusers
+    $results_transactions_graph.each do |key, results2|
+
+
+      data['trans_graph_details_name'][i] = key
+
+      if (!$results_transactions[key].nil?) then
+
+        if ($results_transactions[key].count > 1)
+          data['trans_graph_details_avg'][i] = (($results_transactions[key].inject{ |sum, el| sum + el }.to_f / $results_transactions[key].size) / 1000).round(2)
+          data['trans_graph_details_min'][i] = ($results_transactions[key].min / 1000).round(2)
+          data['trans_graph_details_max'][i] = ($results_transactions[key].max / 1000).round(2)
+          data['trans_graph_details_per'][i] = (percentile($results_transactions[key], 0.9) / 1000).round(2)
+        else
+          data['trans_graph_details_avg'][i] = 0
+          data['trans_graph_details_min'][i] = 0
+          data['trans_graph_details_max'][i] = 0
+          data['trans_graph_details_per'][i] = 0
+        end
+      else
+
+        data['trans_graph_details_min'][i] = 0
+        data['trans_graph_details_max'][i] = 0
+        data['trans_graph_details_avg'][i] = 0
+        data['trans_graph_details_per'][i] = 0
+
+      end
+
+      if (!$transactions_iterations[key].nil?)
+        data['trans_graph_details_ite'][i] = $transactions_iterations[key]
+      else
+        data['trans_graph_details_ite'][i] = 0
+      end
+      i += 1
+    end
+
 
 
     # Print the output as a json string
@@ -345,4 +505,12 @@ def controller()
   # run sinatra on the default url/port
   $sinatra_instance.run!
 
+end
+
+def percentile(values, percentile)
+    values_sorted = values.sort
+    k = (percentile*(values_sorted.length-1)+1).floor - 1
+    f = (percentile*(values_sorted.length-1)+1).modulo(1)
+
+    return values_sorted[k] + (f * (values_sorted[k+1] - values_sorted[k]))
 end
